@@ -1,0 +1,13 @@
+
+#drawarea {
+   height: 90%;
+}
+a img{
+    position: absolute; 
+	top: 0; 
+	right: 0; 
+	border: 0;
+}
+footer {
+   text-align: center;
+}
