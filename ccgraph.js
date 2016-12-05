@@ -13,7 +13,23 @@ var NodeType = {
     ONLINE_PROGRAM: 3,
     DYNAMIC: 4
 };
+/**
+ * This constant when seted to true will alow to all debug messages be printed on webbrowser console.
+ */
+const IS_DEBUG = false;
 
+/**
+ * Use this function instead console.log to keep control on when debug messages should be printed on console.
+ */
+function debug() {
+   if(IS_DEBUG) {
+     let text = '';
+     for(let i in arguments) {
+        text += ' ' + arguments[i];
+	 }
+	 console.log(text);
+   }
+}
 
 // ************************************  Load Local file *********************************************
 (function(d){
@@ -38,20 +54,20 @@ var NodeType = {
         var reader = new FileReader();
 		var localReference = this;
 		var text = "";
-		var loadCount = 0;
-		var callb = callback || this.callback;
+        var loadCount = 0;
+        var callb = callback || this.callback;
         reader.onload = function() {
           text += reader.result; 
-		  if(++loadCount >= localReference.get().files.length)
+          if(++loadCount >= localReference.get().files.length)
             callb.call(this, text);
           else {
             reader.readAsText(localReference.get().files[loadCount]);
-          }		  
+          }          
         };
         if(localReference.get().files[0].size) {
             reader.readAsText(localReference.get().files[0]);
-		}
-	  }
+        }
+      }
    };
    var loadText = function(callback) {
       $input.callback = callback;
@@ -67,9 +83,7 @@ var NodeType = {
  * Regular expressions for parsing some Cobol constructs using Bradesco code conventions.
  * FIXME: The FIELD_RE support only fields with a VALUE clause added in the same line.
 **/
-
 // TODO  CALL WRK-PROGRAMA           USING WRK-AREA-CMCT6J59
-
 const DIVISION_BEGIN_RE = /^ {7}([A-Z0-9-]+) +DIVISION *\. */;
 const SECTION_BEGIN_RE  = /^ {7}([A-Z0-9-]+) +SECTION *\. */;
 const MOVE_RE           = /^ {7} +MOVE +['"]([A-Z0-9_-]+)['"] +TO ([A-Z0-9_-]+) */;
@@ -83,14 +97,14 @@ const CALL_RE           = /^ {7} +CALL ([A-Z0-9_-]+).*/;
 const CICS_BEGIN_RE     = /^ {7} +EXEC +CICS +LINK */;
 const CICS_PROGRAM_RE   = /^ {7} +PROGRAM +\(? *([A-Z0-9-]+) *\)? */;
 const CICS_EXIT_RE      = /^ {7} +END-EXEC */;
-
+// ***************************************************************************************************
 
 /**
  *  Parses Cobol source code and returns a perform call graph.
 **/
 function parseCallGraph(code, duplicate_calls=true, program_name=false, replace_fields={}) {
     let graph = {
-        nodes: [],
+        nodes: {},
         edges: []
     };
     
@@ -98,21 +112,22 @@ function parseCallGraph(code, duplicate_calls=true, program_name=false, replace_
     code = code.split('\n');
     
     function match(re) {
-	    var line = code[lineno];
+        var line = code[lineno];
         return re.exec(line);
     }
     
     function pushNode(id, type, data={}) {
-        let node_ids = graph.nodes.map(n => {
-            return n.id
-        });
-        if (node_ids.indexOf(id) == -1) {
-            graph.nodes.push({
+        // let node_ids = graph.nodes.map(n => {
+        //     return n.id
+        // });
+        // if (node_ids.indexOf(id) == -1) {
+            graph.nodes[id] = {
                 id: id,
+				name: id,
                 type: type,
                 data: data
-            });
-        }
+            };
+        //}
     }
     
     function pushEdge(source, target, type) {
@@ -137,17 +152,17 @@ function parseCallGraph(code, duplicate_calls=true, program_name=false, replace_
     while (lineno < code.length) {
         let matches;
         let fields;
-		if(code[lineno].trim().startsWith("*")) {
-		   lineno++;
-		   continue;
-		}
+        if(code[lineno].trim().startsWith("*")) { // trim and startsWith is less spenciven than regex 
+           lineno++;
+           continue;
+        }
         
         if ((matches = match(PROGRAM_ID_RE)) != null) {
             program = matches[1];
-        }
-        
-        // Begining of a procedure
-        if ((matches = match(PROC_BEGIN_RE)) != null) {
+        } 
+		
+		// Begining of a procedure
+		else if ((matches = match(PROC_BEGIN_RE)) != null) {
             fields = {};
             console.assert(program !== undefined);
             
@@ -228,7 +243,7 @@ function parseCallGraph(code, duplicate_calls=true, program_name=false, replace_
             }
             pushNode(proc, NodeType.PROCEDURE, {fields: fields});
         }
-        console.log(graph.nodes);
+        debug(graph.nodes);
         ++lineno;
     }
     return graph;
@@ -278,7 +293,7 @@ function generateDotFile(graph) {
     });
     
     graph.nodes.forEach(n => {
-        console.log(n.id, n);
+        debug(n.id, n);
         let color;
         switch (n.type) {
             case NodeType.PROCEDURE:      color = '0.650 0.200 1.000'; break;
