@@ -1,12 +1,12 @@
 function d3Graph(nodes, links) {
-var width = 960,
-    height = 500;
+var width = 1000,
+    height = 800;
 
 var force = d3.layout.force()
     .nodes(d3.values(nodes))
     .links(links)
     .size([width, height])
-    .linkDistance(60)
+    .linkDistance(100)
     .charge(-300)
     .on("tick", tick)
     .start();
@@ -17,8 +17,8 @@ var svg = d3.select("#drawarea").append("svg")
 
 // Per-type markers, as they don't inherit styles.
 svg.append("defs").selectAll("marker")
-    .data(["suit", "licensing", "resolved"])
-  .enter().append("marker")
+    .data(['1', '2', "3"])
+    .enter().append("marker")
     .attr("id", function(d) { return d; })
     .attr("viewBox", "0 -5 10 10")
     .attr("refX", 15)
@@ -26,24 +26,24 @@ svg.append("defs").selectAll("marker")
     .attr("markerWidth", 6)
     .attr("markerHeight", 6)
     .attr("orient", "auto")
-  .append("path")
+    .append("path")
     .attr("d", "M0,-5L10,0L0,5");
 
 var path = svg.append("g").selectAll("path")
     .data(force.links())
-  .enter().append("path")
+    .enter().append("path")
     .attr("class", function(d) { return "link " + d.type; })
     .attr("marker-end", function(d) { return "url(#" + d.type + ")"; });
 
 var circle = svg.append("g").selectAll("circle")
     .data(force.nodes())
-  .enter().append("circle")
+    .enter().append("circle")
     .attr("r", 6)
     .call(force.drag);
 
 var text = svg.append("g").selectAll("text")
     .data(force.nodes())
-  .enter().append("text")
+    .enter().append("text")
     .attr("x", 8)
     .attr("y", ".31em")
     .text(function(d) { return d.name; });

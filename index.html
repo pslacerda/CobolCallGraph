@@ -23,7 +23,6 @@
 	<script src=d3.js></script>
     <script>
 			function load() {
-
 			   let drawarea = document.querySelector('#drawarea');
 			   drawarea.innerHTML = "<h3>Loading...</h3>";
 			   loadLocalFile(function(fullText) {			        
@@ -31,13 +30,14 @@
 					
 								var nodes = {};
 
-// Compute the distinct nodes from the links.
-tree.edges.forEach(function(link) {
-  link.source = nodes[link.source] || (nodes[link.source] = {name: link.source});
-  link.target = nodes[link.target] || (nodes[link.target] = {name: link.target});
-});
-					
+                    // Compute the distinct nodes from the links.
+                    tree.edges.forEach(function(link) {
+                        link.source = nodes[link.source] || (nodes[link.source] = {name: link.source});
+                        link.target = nodes[link.target] || (nodes[link.target] = {name: link.target});
+                    });
+					drawarea.innerHTML = "";
 			        d3Graph(nodes, tree.edges);
+					
 				    //var dot = generateDotFile(parseCallGraph(fullText, true, true, {}));
                     // var result = Viz(dot, {format: 'svg'});                    
                     // drawarea.innerHTML = result;
