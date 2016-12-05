@@ -15,6 +15,52 @@ var NodeType = {
 };
 
 
+// ************************************  Load Local file *********************************************
+(function(d){
+   var $input = {
+      input: null,
+	  get: function() {
+	    var localReference = this;
+	    if(this.input == null) {
+		   this.input = d.createElement("input");
+		   this.input.style = "display: none";
+		   this.input.type = "file";
+		   this.input.onchange = function() {localReference.loadText();};
+		   d.body.appendChild(this.input); 
+		}
+		return this.input;
+	  },
+	  click: function() {
+	    this.get().click();
+	  },
+	  loadText : function(callback) {	    
+        var reader = new FileReader();
+		var localReference = this;
+		var text = "";
+		var loadCount = 0;
+		var callb = callback || this.callback;
+        reader.onload = function() {
+          text += reader.result; 
+		  if(++loadCount >= localReference.get().files.length)
+            callb.call(this, text);		  
+        };
+        for(var i in localReference.get().files) {
+		  console.log(localReference.get().files[i]);
+		  if(localReference.get().files[i].size)
+            reader.readAsText(localReference.get().files[i]);
+		}
+	  }
+   };
+   var loadText = function(callback) {
+      $input.callback = callback;
+      $input.click();
+   }
+   
+   window.loadLocalFile = loadText;
+})(document);
+
+// ***************************************************************************************************
+
 /**
  * Regular expressions for parsing some Cobol constructs using Bradesco code conventions.
  * FIXME: The FIELD_RE support only fields with a VALUE clause added in the same line.
@@ -22,23 +68,19 @@ var NodeType = {
 
 // TODO  CALL WRK-PROGRAMA           USING WRK-AREA-CMCT6J59
 
-var DIVISION_BEGIN_RE = /^ {7}([A-Z0-9-]+) +DIVISION *\. *$/;
-var SECTION_BEGIN_RE  = /^ {7}([A-Z0-9-]+) +SECTION *\. *$/;
-var MOVE_RE           = /^ {7} +MOVE +['"]([A-Z0-9_-]+)['"] +TO ([A-Z0-9_-]+) *$/;
-var PROCEDURE_DIVISION_BEGIN_RE = /^ {7}PROCEDURE +DIVISION *\. *$/;
-
-var PROGRAM_ID_RE     = /^ {7}PROGRAM\-ID\. +([A-Z0-9]+)\. *$/;
-var FIELD_RE          = /^ {7} +[0-9]+ +([A-Z0-9-]+) +PIC.* VALUE ["']([A-Z0-9-]+)["']\..*$/;
-
-var PROC_BEGIN_RE     = /^ {7}([0-9]+)-([A-Z0-9-]+) +SECTION\. *$/;
-var PROC_EXIT_RE      = /^ {7}([0-9]+)-99-FIM\. +EXIT\. *$/;
-                      
+var DIVISION_BEGIN_RE = /^ {7}([A-Z0-9-]+) +DIVISION *\. */;
+var SECTION_BEGIN_RE  = /^ {7}([A-Z0-9-]+) +SECTION *\. */;
+var MOVE_RE           = /^ {7} +MOVE +['"]([A-Z0-9_-]+)['"] +TO ([A-Z0-9_-]+) */;
+var PROCEDURE_DIVISION_BEGIN_RE = /^ {7}PROCEDURE +DIVISION *\. */;
+var PROGRAM_ID_RE     = /^ {7}PROGRAM\-ID\. +([A-Z0-9]+)\. */;
+var FIELD_RE          = /^ {7} +[0-9]+ +([A-Z0-9-]+) +PIC.* VALUE ["']([A-Z0-9-]+)["']\..*/;
+var PROC_BEGIN_RE     = /^ {7}([0-9]+)-([A-Z0-9-]+) +SECTION\. */;
+var PROC_EXIT_RE      = /^ {7}([0-9]+)-99-FIM\. +EXIT\. */;                      
 var PERFORM_RE        = /^ {7} +PERFORM +([0-9]+)-([A-Z0-9-]+)/;
 var CALL_RE           = /^ {7} +CALL ([A-Z0-9_-]+).*/;
-                      
-var CICS_BEGIN_RE     = /^ {7} +EXEC +CICS +LINK *$/;
-var CICS_PROGRAM_RE   = /^ {7} +PROGRAM +\(? *([A-Z0-9-]+) *\)? *$/;
-var CICS_EXIT_RE      = /^ {7} +END-EXEC *$/;
+var CICS_BEGIN_RE     = /^ {7} +EXEC +CICS +LINK */;
+var CICS_PROGRAM_RE   = /^ {7} +PROGRAM +\(? *([A-Z0-9-]+) *\)? */;
+var CICS_EXIT_RE      = /^ {7} +END-EXEC */;
 
 
 /**
@@ -54,7 +96,8 @@ function parseCallGraph(code, duplicate_calls=true, program_name=false, replace_
     code = code.split('\n');
     
     function match(re) {
-        return re.exec(code[lineno]);
+	    var line = code[lineno];
+        return re.exec(line);
     }
     
     function pushNode(id, type, data={}) {
@@ -92,6 +135,10 @@ function parseCallGraph(code, duplicate_calls=true, program_name=false, replace_
     while (lineno < code.length) {
         let matches;
         let fields;
+		if(code[lineno].trim().startsWith("*")) {
+		   lineno++;
+		   continue;
+		}
         
         if ((matches = match(PROGRAM_ID_RE)) != null) {
             program = matches[1];

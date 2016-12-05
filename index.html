@@ -1,39 +1,25 @@
 <html>
     <head>
-        <title>CCGraph</title>
-        <script src=https://mdaines.github.io/viz.js/bower_components/viz.js/viz.js></script>
-        <script src=ccgraph.js></script>
+        <title>CCGraph</title>        
     </head>
     <body>
         <section id=controls>
-            <button onclick=draw()>Gerar</button>
-            <button onclick=addProgram()>Adicionar programa</button>
+			<button onclick="load()">Load </button>
         <section>
         <section id=programs>
         </section>
-        <div id=drawarea></div>
-        <script>
-            function draw() {
-                var programs = [];
-                var textAreas = Array.from(document.querySelectorAll('textarea'));
-                
-                textAreas.forEach(textArea => {
-                    programs.push(textArea.value);
-                });
-                
-                var code = programs.join('\n');
-                //var fields = parseFields(code);
-                var dot = generateDotFile(parseCallGraph(code, true, true, {}));
-                
-                var result = Viz(dot, {format: 'svg'});
-                var drawarea = document.querySelector('#drawarea');
-                drawarea.innerHTML = result;
-            }
-            
-            function addProgram() {
-                var textArea = document.createElement('textarea');
-                document.querySelector('#programs').appendChild(textArea);
-            }
-        </script>
+        <div id=drawarea></div>		
     </body>
+	<script src=https://mdaines.github.io/viz.js/bower_components/viz.js/viz.js></script>
+        <script src=ccgraph.js></script>
+        <script>
+			function load() {
+			   loadLocalFile(function(fullText) {                   				   
+				    var dot = generateDotFile(parseCallGraph(fullText, true, true, {}));                
+                    var result = Viz(dot, {format: 'svg'});
+                    var drawarea = document.querySelector('#drawarea');
+                    drawarea.innerHTML = result;
+               });
+			}			
+        </script>
 <html>
