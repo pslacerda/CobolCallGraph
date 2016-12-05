@@ -24,6 +24,7 @@ var NodeType = {
 	    if(this.input == null) {
 		   this.input = d.createElement("input");
 		   this.input.style = "display: none";
+		   this.input.multiple = "true";
 		   this.input.type = "file";
 		   this.input.onchange = function() {localReference.loadText();};
 		   d.body.appendChild(this.input); 
@@ -42,12 +43,13 @@ var NodeType = {
         reader.onload = function() {
           text += reader.result; 
 		  if(++loadCount >= localReference.get().files.length)
-            callb.call(this, text);		  
+            callb.call(this, text);
+          else {
+            reader.readAsText(localReference.get().files[loadCount]);
+          }		  
         };
-        for(var i in localReference.get().files) {
-		  console.log(localReference.get().files[i]);
-		  if(localReference.get().files[i].size)
-            reader.readAsText(localReference.get().files[i]);
+        if(localReference.get().files[0].size) {
+            reader.readAsText(localReference.get().files[0]);
 		}
 	  }
    };
@@ -68,19 +70,19 @@ var NodeType = {
 
 // TODO  CALL WRK-PROGRAMA           USING WRK-AREA-CMCT6J59
 
-var DIVISION_BEGIN_RE = /^ {7}([A-Z0-9-]+) +DIVISION *\. */;
-var SECTION_BEGIN_RE  = /^ {7}([A-Z0-9-]+) +SECTION *\. */;
-var MOVE_RE           = /^ {7} +MOVE +['"]([A-Z0-9_-]+)['"] +TO ([A-Z0-9_-]+) */;
-var PROCEDURE_DIVISION_BEGIN_RE = /^ {7}PROCEDURE +DIVISION *\. */;
-var PROGRAM_ID_RE     = /^ {7}PROGRAM\-ID\. +([A-Z0-9]+)\. */;
-var FIELD_RE          = /^ {7} +[0-9]+ +([A-Z0-9-]+) +PIC.* VALUE ["']([A-Z0-9-]+)["']\..*/;
-var PROC_BEGIN_RE     = /^ {7}([0-9]+)-([A-Z0-9-]+) +SECTION\. */;
-var PROC_EXIT_RE      = /^ {7}([0-9]+)-99-FIM\. +EXIT\. */;                      
-var PERFORM_RE        = /^ {7} +PERFORM +([0-9]+)-([A-Z0-9-]+)/;
-var CALL_RE           = /^ {7} +CALL ([A-Z0-9_-]+).*/;
-var CICS_BEGIN_RE     = /^ {7} +EXEC +CICS +LINK */;
-var CICS_PROGRAM_RE   = /^ {7} +PROGRAM +\(? *([A-Z0-9-]+) *\)? */;
-var CICS_EXIT_RE      = /^ {7} +END-EXEC */;
+const DIVISION_BEGIN_RE = /^ {7}([A-Z0-9-]+) +DIVISION *\. */;
+const SECTION_BEGIN_RE  = /^ {7}([A-Z0-9-]+) +SECTION *\. */;
+const MOVE_RE           = /^ {7} +MOVE +['"]([A-Z0-9_-]+)['"] +TO ([A-Z0-9_-]+) */;
+const PROCEDURE_DIVISION_BEGIN_RE = /^ {7}PROCEDURE +DIVISION *\. */;
+const PROGRAM_ID_RE     = /^ {7}PROGRAM\-ID\. +([A-Z0-9]+)\. */;
+const FIELD_RE          = /^ {7} +[0-9]+ +([A-Z0-9-]+) +PIC.* VALUE ["']([A-Z0-9-]+)["']\..*/;
+const PROC_BEGIN_RE     = /^ {7}([0-9]+)-([A-Z0-9-]+) +SECTION\. */;
+const PROC_EXIT_RE      = /^ {7}([0-9]+)-99-FIM\. +EXIT\. */;                      
+const PERFORM_RE        = /^ {7} +PERFORM +([0-9]+)-([A-Z0-9-]+)/;
+const CALL_RE           = /^ {7} +CALL ([A-Z0-9_-]+).*/;
+const CICS_BEGIN_RE     = /^ {7} +EXEC +CICS +LINK */;
+const CICS_PROGRAM_RE   = /^ {7} +PROGRAM +\(? *([A-Z0-9-]+) *\)? */;
+const CICS_EXIT_RE      = /^ {7} +END-EXEC */;
 
 
 /**
@@ -259,7 +261,7 @@ function parseFields(code) {
 function generateDotFile(graph) {
     let dot = [
         'digraph call {',
-        'size="6,4"; ratio = fill;',
+        'size="14,10"; ratio = fill;',
         'graph [ordering="out"];',
         'node [style=filled]'
     ];
