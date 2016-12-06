@@ -26,8 +26,8 @@ function debug() {
      let text = '';
      for(let i in arguments) {
         text += ' ' + arguments[i];
-	 }
-	 console.log(text);
+     }
+     console.log(text);
    }
 }
 
@@ -35,25 +35,25 @@ function debug() {
 (function(d){
    var $input = {
       input: null,
-	  get: function() {
-	    var localReference = this;
-	    if(this.input == null) {
-		   this.input = d.createElement("input");
-		   this.input.style = "display: none";
-		   this.input.multiple = "true";
-		   this.input.type = "file";
-		   this.input.onchange = function() {localReference.loadText();};
-		   d.body.appendChild(this.input); 
-		}
-		return this.input;
-	  },
-	  click: function() {
-	    this.get().click();
-	  },
-	  loadText : function(callback) {	    
+      get: function() {
+        var localReference = this;
+        if(this.input == null) {
+           this.input = d.createElement("input");
+           this.input.style = "display: none";
+           this.input.multiple = "true";
+           this.input.type = "file";
+           this.input.onchange = function() {localReference.loadText();};
+           d.body.appendChild(this.input); 
+        }
+        return this.input;
+      },
+      click: function() {
+        this.get().click();
+      },
+      loadText : function(callback) {        
         var reader = new FileReader();
-		var localReference = this;
-		var text = "";
+        var localReference = this;
+        var text = "";
         var loadCount = 0;
         var callb = callback || this.callback;
         reader.onload = function() {
@@ -104,7 +104,7 @@ const CICS_EXIT_RE      = /^ {7} +END-EXEC */;
 **/
 function parseCallGraph(code, duplicate_calls=true, program_name=false, replace_fields={}) {
     let graph = {
-        nodes: {},
+        nodes: [],
         edges: []
     };
     
@@ -117,17 +117,17 @@ function parseCallGraph(code, duplicate_calls=true, program_name=false, replace_
     }
     
     function pushNode(id, type, data={}) {
-        // let node_ids = graph.nodes.map(n => {
-        //     return n.id
-        // });
-        // if (node_ids.indexOf(id) == -1) {
-            graph.nodes[id] = {
+        let node_ids = graph.nodes.map(n => {
+            return n.id
+        });
+        if (node_ids.indexOf(id) == -1) {
+            graph.nodes.push({
                 id: id,
-				name: id,
+                name: id,
                 type: type,
                 data: data
-            };
-        //}
+            });
+        }
     }
     
     function pushEdge(source, target, type) {
@@ -152,7 +152,7 @@ function parseCallGraph(code, duplicate_calls=true, program_name=false, replace_
     while (lineno < code.length) {
         let matches;
         let fields;
-        if(code[lineno].trim().startsWith("*")) { // trim and startsWith is less spenciven than regex 
+        if(code[lineno].substring(6, 7) === "*") {
            lineno++;
            continue;
         }
@@ -160,9 +160,9 @@ function parseCallGraph(code, duplicate_calls=true, program_name=false, replace_
         if ((matches = match(PROGRAM_ID_RE)) != null) {
             program = matches[1];
         } 
-		
-		// Begining of a procedure
-		else if ((matches = match(PROC_BEGIN_RE)) != null) {
+        
+        // Begining of a procedure
+        else if ((matches = match(PROC_BEGIN_RE)) != null) {
             fields = {};
             console.assert(program !== undefined);
             
