@@ -16,7 +16,22 @@ var NodeType = {
 /**
  * This constant when seted to true will alow to all debug messages be printed on webbrowser console.
  */
-const IS_DEBUG = false;
+const IS_DEBUG = true;
+
+/**
+ * Indicates the max number of lines per procedure acepted to avoid infinit loop.
+ */
+const PROCEDURE_MAX_LINE=10000;
+
+const messages = {
+    max_line_per_procedure: "Syntax Exception - Max line number per procedure raised",
+    lines_of_code: "lines of code finded.",
+    program_name_finded: "Program name finded on line",
+    procedure_begin: "Starting procedure",
+    procedure_exit: "Exiting procedure",
+    stargin_cics: "Starting an cics call",
+    syntax_error: "Syntax error",
+};
 
 /**
  * Use this function instead console.log to keep control on when debug messages should be printed on console.
@@ -32,28 +47,28 @@ function debug() {
 }
 
 /**
- * Regular expressions for parsing some Cobol constructs using Bradesco code conventions.
+ * Regular expressions for parsing some Cobol constructs using some code conventions.
  * FIXME: The FIELD_RE support only fields with a VALUE clause added in the same line.
-**/
+ */
 // TODO  CALL WRK-PROGRAMA           USING WRK-AREA-CMCT6J59
-const DIVISION_BEGIN_RE = /^ {7}([A-Z0-9-]+) +DIVISION *\. */;
-const SECTION_BEGIN_RE  = /^ {7}([A-Z0-9-]+) +SECTION *\. */;
-const MOVE_RE           = /^ {7} +MOVE +['"]([A-Z0-9_-]+)['"] +TO ([A-Z0-9_-]+) */;
-const PROCEDURE_DIVISION_BEGIN_RE = /^ {7}PROCEDURE +DIVISION *\. */;
-const PROGRAM_ID_RE     = /^ {7}PROGRAM\-ID\. +([A-Z0-9]+)\. */;
-const FIELD_RE          = /^ {7} +[0-9]+ +([A-Z0-9-]+) +PIC.* VALUE ["']([A-Z0-9-]+)["']\..*/;
-const PROC_BEGIN_RE     = /^ {7}([0-9]+)-([A-Z0-9-]+) +SECTION\. */;
-const PROC_EXIT_RE      = /^ {7}([0-9]+)-99-FIM\. +EXIT\. */;                      
-const PERFORM_RE        = /^ {7} +PERFORM +([0-9]+)-([A-Z0-9-]+)/;
-const CALL_RE           = /^ {7} +CALL ([A-Z0-9_-]+).*/;
-const CICS_BEGIN_RE     = /^ {7} +EXEC +CICS +LINK */;
-const CICS_PROGRAM_RE   = /^ {7} +PROGRAM +\(? *([A-Z0-9-]+) *\)? */;
-const CICS_EXIT_RE      = /^ {7} +END-EXEC */;
+const DIVISION_BEGIN_RE = /^ *([\w0-9-]+) +DIVISION *\. */i;
+const SECTION_BEGIN_RE  = /^ *([\w0-9-]+) +SECTION *\. */i;
+const MOVE_RE           = /^ *MOVE +['"]([\w0-9_-]+)['"] +TO ([\w0-9_-]+) */i;
+const PROCEDURE_DIVISION_BEGIN_RE = /^ {7}PROCEDURE +DIVISION *\. */i;
+const PROGRAM_ID_RE     = /^ *PROGRAM\-ID\. +([\w0-9]+)\. */i;
+const FIELD_RE          = /^ *[0-9]+ +([\w0-9-]+) +PIC.* VALUE ["']([\w0-9-]+)["']\..*/i;
+const PROC_BEGIN_RE     = /^ *([^ ]+) +SECTION\. */i;
+const PROC_EXIT_RE      = /^ *([^ ]+)+\. */i;
+const PERFORM_RE        = /^ *PERFORM +([^ ]+)/i;
+const CALL_RE           = /^ *CALL ([^ ]+).*/i;
+const CICS_BEGIN_RE     = /^ *EXEC +CICS +LINK */i;
+const CICS_PROGRAM_RE   = /^ *PROGRAM +\(? *([\w0-9-]+) *\)? */i;
+const CICS_EXIT_RE      = /^ *END-EXEC */i;
 // ***************************************************************************************************
 
 /**
  *  Parses Cobol source code and returns a perform call graph.
-**/
+ */
 function parseCallGraph(code, duplicate_calls=true, program_name=false, replace_fields={}) {
     let graph = {
         nodes: [],
@@ -62,17 +77,19 @@ function parseCallGraph(code, duplicate_calls=true, program_name=false, replace_
     
     let lineno = 0;
     code = code.split('\n');
+    debug(code.length, messages.lines_of_code);
     
     function match(re) {
         var line = code[lineno];
         return re.exec(line);
     }
     
+    let registeredIds = {}; // improve performance for large source files
     function pushNode(id, type, data={}) {
-        let node_ids = graph.nodes.map(n => {
-            return n.id
-        });
-        if (node_ids.indexOf(id) == -1) {
+        if (registeredIds[id] === true) {
+            return;
+        } else {
+            registeredIds[id] = true;
             graph.nodes.push({
                 id: id,
                 name: id,
@@ -104,13 +121,14 @@ function parseCallGraph(code, duplicate_calls=true, program_name=false, replace_
     while (lineno < code.length) {
         let matches;
         let fields;
-        if(code[lineno].substring(6, 7) === "*") {
+        if(code[lineno].substring(6, 7) === "*") { // TODO: fix comment 
            lineno++;
            continue;
         }
         
         if ((matches = match(PROGRAM_ID_RE)) != null) {
             program = matches[1];
+            debug(messages.program_name_finded, lineno + 1, program);
         } 
         
         // Begining of a procedure
@@ -118,21 +136,22 @@ function parseCallGraph(code, duplicate_calls=true, program_name=false, replace_
             fields = {};
             console.assert(program !== undefined);
             
-            let pnum = matches[1];
-            let pname = matches[2];
-            let proc = `${pnum}-${pname}`;
+            let pname = matches[1];
+            let proc = pname;
             if (program_name) {
                 proc = `[${program}] ${proc}`;
             }
+            debug(messages.procedure_begin, proc);
             
+            let infinitLoopController = 0;
             // Iter the procedure line by line
             while (true) {
-                
+                if (++infinitLoopController > PROCEDURE_MAX_LINE) throw messages.max_line_per_procedure;
+
                 // End of procedure found
                 if ((matches = match(PROC_EXIT_RE)) != null) {
-                    let epnum = matches[1];
-                    console.assert(pnum == epnum);
                     ++lineno;
+                    debug(messages.procedure_exit, proc);
                     break;
                 }
                 
@@ -147,15 +166,13 @@ function parseCallGraph(code, duplicate_calls=true, program_name=false, replace_
                 }
                 
                 // Perform found
-                else if ((matches = match(PERFORM_RE)) != null) {
-                    let ppnum = matches[1];
-                    let ppname = matches[2];
-                    let pproc = `${ppnum}-${ppname}`;
+                else if ((matches = match(PERFORM_RE)) != null) {                    
+                    let ppname = matches[1];                    
                     if (program_name) {
-                        pproc = `[${program}] ${pproc}`;
+                        ppname = `[${program}] ${ppname}`;
                     }
-                    pushNode(pproc, NodeType.PROCEDURE);
-                    pushEdge(proc, pproc, CallType.PERFORM);
+                    pushNode(ppname, NodeType.PROCEDURE);
+                    pushEdge(proc, ppname, CallType.PERFORM);
                 }
                 
                 // Batch call found
@@ -170,9 +187,12 @@ function parseCallGraph(code, duplicate_calls=true, program_name=false, replace_
                 
                 // Begining of an online call found(EXEC)
                 else if ((matches = match(CICS_BEGIN_RE)) != null) {
+                    debug(message.stargin_cics);
                     
+                    let infinitLoopcontrol = 0;
                     // Iter the EXEC block line by line
                     while (true) {
+                        if (++infinitLoopcontrol > PROCEDURE_MAX_LINE) throw messages.max_line_per_procedure; 
                         // End of EXEC found
                         if ((matches = match(CICS_EXIT_RE)) != null) {
                             ++lineno;
@@ -195,8 +215,7 @@ function parseCallGraph(code, duplicate_calls=true, program_name=false, replace_
             }
             pushNode(proc, NodeType.PROCEDURE, {fields: fields});
         }
-        debug(graph.nodes);
-        ++lineno;
+        if (++lineno >= code.length) throw messages.syntax_error;
     }
     return graph;
 }
