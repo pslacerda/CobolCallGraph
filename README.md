@@ -1,1 +1,1 @@
-# CobolCallGraph
+# CobolCallGraphThis an online app to generate dot/graphviz chart of Cobol calls.You can test this application [here](https://edgardleal.github.io/CobolCallGraph/)

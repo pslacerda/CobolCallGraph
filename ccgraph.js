@@ -13,33 +13,43 @@ var NodeType = {
     ONLINE_PROGRAM: 3,
     DYNAMIC: 4
 };
+/**
+ * This constant when seted to true will alow to all debug messages be printed on webbrowser console.
+ */
+const IS_DEBUG = false;
 
+/**
+ * Use this function instead console.log to keep control on when debug messages should be printed on console.
+ */
+function debug() {
+   if(IS_DEBUG) {
+     let text = '';
+     for(let i in arguments) {
+        text += ' ' + arguments[i];
+     }
+     console.log(text);
+   }
+}
 
 /**
  * Regular expressions for parsing some Cobol constructs using Bradesco code conventions.
  * FIXME: The FIELD_RE support only fields with a VALUE clause added in the same line.
 **/
-
 // TODO  CALL WRK-PROGRAMA           USING WRK-AREA-CMCT6J59
-
-var DIVISION_BEGIN_RE = /^ {7}([A-Z0-9-]+) +DIVISION *\. *$/;
-var SECTION_BEGIN_RE  = /^ {7}([A-Z0-9-]+) +SECTION *\. *$/;
-var MOVE_RE           = /^ {7} +MOVE +['"]([A-Z0-9_-]+)['"] +TO ([A-Z0-9_-]+) *$/;
-var PROCEDURE_DIVISION_BEGIN_RE = /^ {7}PROCEDURE +DIVISION *\. *$/;
-
-var PROGRAM_ID_RE     = /^ {7}PROGRAM\-ID\. +([A-Z0-9]+)\. *$/;
-var FIELD_RE          = /^ {7} +[0-9]+ +([A-Z0-9-]+) +PIC.* VALUE ["']([A-Z0-9-]+)["']\..*$/;
-
-var PROC_BEGIN_RE     = /^ {7}([0-9]+)-([A-Z0-9-]+) +SECTION\. *$/;
-var PROC_EXIT_RE      = /^ {7}([0-9]+)-99-FIM\. +EXIT\. *$/;
-                      
-var PERFORM_RE        = /^ {7} +PERFORM +([0-9]+)-([A-Z0-9-]+)/;
-var CALL_RE           = /^ {7} +CALL ([A-Z0-9_-]+).*/;
-                      
-var CICS_BEGIN_RE     = /^ {7} +EXEC +CICS +LINK *$/;
-var CICS_PROGRAM_RE   = /^ {7} +PROGRAM +\(? *([A-Z0-9-]+) *\)? *$/;
-var CICS_EXIT_RE      = /^ {7} +END-EXEC *$/;
-
+const DIVISION_BEGIN_RE = /^ {7}([A-Z0-9-]+) +DIVISION *\. */;
+const SECTION_BEGIN_RE  = /^ {7}([A-Z0-9-]+) +SECTION *\. */;
+const MOVE_RE           = /^ {7} +MOVE +['"]([A-Z0-9_-]+)['"] +TO ([A-Z0-9_-]+) */;
+const PROCEDURE_DIVISION_BEGIN_RE = /^ {7}PROCEDURE +DIVISION *\. */;
+const PROGRAM_ID_RE     = /^ {7}PROGRAM\-ID\. +([A-Z0-9]+)\. */;
+const FIELD_RE          = /^ {7} +[0-9]+ +([A-Z0-9-]+) +PIC.* VALUE ["']([A-Z0-9-]+)["']\..*/;
+const PROC_BEGIN_RE     = /^ {7}([0-9]+)-([A-Z0-9-]+) +SECTION\. */;
+const PROC_EXIT_RE      = /^ {7}([0-9]+)-99-FIM\. +EXIT\. */;                      
+const PERFORM_RE        = /^ {7} +PERFORM +([0-9]+)-([A-Z0-9-]+)/;
+const CALL_RE           = /^ {7} +CALL ([A-Z0-9_-]+).*/;
+const CICS_BEGIN_RE     = /^ {7} +EXEC +CICS +LINK */;
+const CICS_PROGRAM_RE   = /^ {7} +PROGRAM +\(? *([A-Z0-9-]+) *\)? */;
+const CICS_EXIT_RE      = /^ {7} +END-EXEC */;
+// ***************************************************************************************************
 
 /**
  *  Parses Cobol source code and returns a perform call graph.
@@ -54,7 +64,8 @@ function parseCallGraph(code, duplicate_calls=true, program_name=false, replace_
     code = code.split('\n');
     
     function match(re) {
-        return re.exec(code[lineno]);
+        var line = code[lineno];
+        return re.exec(line);
     }
     
     function pushNode(id, type, data={}) {
@@ -64,6 +75,7 @@ function parseCallGraph(code, duplicate_calls=true, program_name=false, replace_
         if (node_ids.indexOf(id) == -1) {
             graph.nodes.push({
                 id: id,
+                name: id,
                 type: type,
                 data: data
             });
@@ -92,13 +104,17 @@ function parseCallGraph(code, duplicate_calls=true, program_name=false, replace_
     while (lineno < code.length) {
         let matches;
         let fields;
+        if(code[lineno].substring(6, 7) === "*") {
+           lineno++;
+           continue;
+        }
         
         if ((matches = match(PROGRAM_ID_RE)) != null) {
             program = matches[1];
-        }
+        } 
         
         // Begining of a procedure
-        if ((matches = match(PROC_BEGIN_RE)) != null) {
+        else if ((matches = match(PROC_BEGIN_RE)) != null) {
             fields = {};
             console.assert(program !== undefined);
             
@@ -179,7 +195,7 @@ function parseCallGraph(code, duplicate_calls=true, program_name=false, replace_
             }
             pushNode(proc, NodeType.PROCEDURE, {fields: fields});
         }
-        console.log(graph.nodes);
+        debug(graph.nodes);
         ++lineno;
     }
     return graph;
@@ -212,7 +228,7 @@ function parseFields(code) {
 function generateDotFile(graph) {
     let dot = [
         'digraph call {',
-        'size="6,4"; ratio = fill;',
+        'size="14,10"; ratio = fill;',
         'graph [ordering="out"];',
         'node [style=filled]'
     ];
@@ -229,7 +245,7 @@ function generateDotFile(graph) {
     });
     
     graph.nodes.forEach(n => {
-        console.log(n.id, n);
+        debug(n.id, n);
         let color;
         switch (n.type) {
             case NodeType.PROCEDURE:      color = '0.650 0.200 1.000'; break;
