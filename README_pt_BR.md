@@ -1,1 +1,9 @@
-# CobolCallGraphEsta é uma aplicação online para criar gráficos dot/graphviz das chamadas de programas Cobol.Você pode testar a aplicação [aqui](https://edgardleal.github.io/CobolCallGraph/)
+# CobolCallGraph
+Esta Ã© uma aplicaÃ§Ã£o online para criar grÃ¡ficos de chamadas de programas Cobol. Suporta programas de formato fixo, ou seja, aqueles com o cÃ³digo entre as colunas 7 e 72.
+
+## Uso
+VocÃª pode testar a aplicaÃ§Ã£o [aqui](https://edgardleal.github.io/CobolCallGraph/)
+
+## Autores
+* Pedro Lacerda <[pslacerda](https://github.com/pslacerda)>
+* Edgard Leal <[edgardleal](https://github.com/edgardleal), [blog](http://blog.edgardleal.com/)>
