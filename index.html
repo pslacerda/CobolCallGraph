@@ -28,10 +28,14 @@
                let drawarea = document.querySelector('#drawarea');
                drawarea.innerHTML = "<h3>Loading...</h3>";
                loadLocalFile(function(fullText) {
-                    let tree = parseCallGraph(fullText, true, true, {});
-                    var dot = generateDotFile(tree);
-                    var result = Viz(dot, {format: 'svg'});
-                    drawarea.innerHTML = result;
+                    try {
+                      let tree = parseCallGraph(fullText, true, true, {});
+                      var dot = generateDotFile(tree);
+                      var result = Viz(dot, {format: 'svg'});
+                      drawarea.innerHTML = result;
+                    } catch(e) {
+                      alert(e.message);
+                    }
                });
             }
             function generateD3() {

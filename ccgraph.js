@@ -1,5 +1,5 @@
 "use strict"
-
+// ******************************************************************************** 
 var CallType = {
     PERFORM: 1,
     CALL: 2,
@@ -18,11 +18,6 @@ var NodeType = {
  */
 const IS_DEBUG = true;
 
-/**
- * Indicates the max number of lines per procedure acepted to avoid infinit loop.
- */
-const PROCEDURE_MAX_LINE=10000;
-
 const messages = {
     max_line_per_procedure: "Syntax Exception - Max line number per procedure raised",
     lines_of_code: "lines of code finded.",
@@ -30,7 +25,11 @@ const messages = {
     procedure_begin: "Starting procedure",
     procedure_exit: "Exiting procedure",
     stargin_cics: "Starting an cics call",
-    syntax_error: "Syntax error",
+    unknow_call_type: "This type of call is not registered: ",
+    unknow_node_type: "This type of node is not registered: ",
+    syntax_error: "You hava an Syntax error in your code, please fix this issue and try again.",
+    block_unclosed: "An block of code is not closed",
+    "Script error." : "Unexpected error"
 };
 
 /**
@@ -40,30 +39,41 @@ function debug() {
    if(IS_DEBUG) {
      let text = '';
      for(let i in arguments) {
-        text += ' ' + arguments[i];
+       if(typeof arguments[i] === "object") {
+         text += ' ' + JSON.stringify(arguments[i]);
+       } else {
+         text += ' ' + arguments[i];
+       }
      }
      console.log(text);
    }
 }
 
+window.addEventListener('error', function(error) {  
+    let message = messages[error.message] || error.message;
+    alert(message);
+    debug(message, error);
+    return true;
+}); 
+
 /**
  * Regular expressions for parsing some Cobol constructs using some code conventions.
  * FIXME: The FIELD_RE support only fields with a VALUE clause added in the same line.
  */
-// TODO  CALL WRK-PROGRAMA           USING WRK-AREA-CMCT6J59
-const DIVISION_BEGIN_RE = /^ *([\w0-9-]+) +DIVISION *\. */i;
-const SECTION_BEGIN_RE  = /^ *([\w0-9-]+) +SECTION *\. */i;
-const MOVE_RE           = /^ *MOVE +['"]([\w0-9_-]+)['"] +TO ([\w0-9_-]+) */i;
-const PROCEDURE_DIVISION_BEGIN_RE = /^ {7}PROCEDURE +DIVISION *\. */i;
-const PROGRAM_ID_RE     = /^ *PROGRAM\-ID\. +([\w0-9]+)\. */i;
-const FIELD_RE          = /^ *[0-9]+ +([\w0-9-]+) +PIC.* VALUE ["']([\w0-9-]+)["']\..*/i;
-const PROC_BEGIN_RE     = /^ *([^ ]+) +SECTION\. */i;
-const PROC_EXIT_RE      = /^ *([^ ]+)+\. */i;
-const PERFORM_RE        = /^ *PERFORM +([^ ]+)/i;
-const CALL_RE           = /^ *CALL ([^ ]+).*/i;
-const CICS_BEGIN_RE     = /^ *EXEC +CICS +LINK */i;
-const CICS_PROGRAM_RE   = /^ *PROGRAM +\(? *([\w0-9-]+) *\)? */i;
-const CICS_EXIT_RE      = /^ *END-EXEC */i;
+const PROCEDURE_DIVISION_BEGIN_RE = /^ {7}PROCEDURE +DIVISION *\. */;
+const DEFAULT_SECTIONS  = /^.{0,6}[^\*](CONFIGURATION|INPUT-OUTPUT|FILE|WORKING-STORAGE|LOCAL-STORAGE|LINKAGE) +SECTION *\./;
+const DIVISION_BEGIN_RE = /^.{0,6}[^\*]([A-Z0-9-]+) +DIVISION *\. */;
+const SECTION_BEGIN_RE  = /^.{0,6}[^\*]([A-Z0-9-]+) +SECTION *\. */;
+const MOVE_RE           = /^.{0,6}[^\*] +MOVE +['"]([A-Z0-9_-]+)['"] +TO ([A-Z0-9_-]+) */;
+const PROGRAM_ID_RE     = /^.{0,6}[^\*]PROGRAM\-ID\. +([^ ]+)\. */;
+const FIELD_RE          = /^.{0,6}[^\*] +[0-9]+ +([A-Z0-9-]+) +PIC.* VALUE ["']([A-Z0-9-]+)["']\..*/;
+const PROC_BEGIN_RE     = /^.{0,6}[^\*]([^ ]+) +SECTION\. */;
+const PROC_EXIT_RE      = /^.{0,6}[^\*]([0-9]+)-99-FIM\. +EXIT\. */;
+const PERFORM_RE        = /^.{0,6}[^\*] +PERFORM +([^ ]+)/;
+const CALL_RE           = /^.{0,6}[^\*] +CALL ([A-Z0-9_-]+).*/;
+const CICS_BEGIN_RE     = /^.{0,6}[^\*] +EXEC +CICS +LINK */;
+const CICS_PROGRAM_RE   = /^.{0,6}[^\*] +PROGRAM +\(? *([A-Z0-9-]+) *\)? */;
+const CICS_EXIT_RE      = /^.{0,6}[^\*] +END-EXEC */;
 // ***************************************************************************************************
 
 /**
@@ -75,7 +85,7 @@ function parseCallGraph(code, duplicate_calls=true, program_name=false, replace_
         edges: []
     };
     
-    let lineno = 0;
+    let lineno = -1;
     code = code.split('\n');
     debug(code.length, messages.lines_of_code);
     
@@ -118,11 +128,11 @@ function parseCallGraph(code, duplicate_calls=true, program_name=false, replace_
     // Line by line
     let program;
     
-    while (lineno < code.length) {
+    while (++lineno < code.length) {
+        if (lineno >= code.length) throw new Error(messages.block_unclosed);
         let matches;
         let fields;
         if(code[lineno].substring(6, 7) === "*") { // TODO: fix comment 
-           lineno++;
            continue;
         }
         
@@ -130,11 +140,16 @@ function parseCallGraph(code, duplicate_calls=true, program_name=false, replace_
             program = matches[1];
             debug(messages.program_name_finded, lineno + 1, program);
         } 
+
+        else if((matches = match(DEFAULT_SECTIONS)) != null) {
+          debug("Default section finded: ", matches[1]);
+          continue;
+        }
         
         // Begining of a procedure
         else if ((matches = match(PROC_BEGIN_RE)) != null) {
             fields = {};
-            console.assert(program !== undefined);
+            if (program === undefined) throw new Error("Program not identified");
             
             let pname = matches[1];
             let proc = pname;
@@ -143,14 +158,12 @@ function parseCallGraph(code, duplicate_calls=true, program_name=false, replace_
             }
             debug(messages.procedure_begin, proc);
             
-            let infinitLoopController = 0;
             // Iter the procedure line by line
             while (true) {
-                if (++infinitLoopController > PROCEDURE_MAX_LINE) throw messages.max_line_per_procedure;
+                if (lineno >= code.length) throw new Error(messages.block_unclosed);
 
                 // End of procedure found
                 if ((matches = match(PROC_EXIT_RE)) != null) {
-                    ++lineno;
                     debug(messages.procedure_exit, proc);
                     break;
                 }
@@ -167,7 +180,7 @@ function parseCallGraph(code, duplicate_calls=true, program_name=false, replace_
                 
                 // Perform found
                 else if ((matches = match(PERFORM_RE)) != null) {                    
-                    let ppname = matches[1];                    
+                    let ppname = matches[1];
                     if (program_name) {
                         ppname = `[${program}] ${ppname}`;
                     }
@@ -187,15 +200,13 @@ function parseCallGraph(code, duplicate_calls=true, program_name=false, replace_
                 
                 // Begining of an online call found(EXEC)
                 else if ((matches = match(CICS_BEGIN_RE)) != null) {
-                    debug(message.stargin_cics);
+                    debug(messages.stargin_cics);
                     
-                    let infinitLoopcontrol = 0;
                     // Iter the EXEC block line by line
                     while (true) {
-                        if (++infinitLoopcontrol > PROCEDURE_MAX_LINE) throw messages.max_line_per_procedure; 
+                        if (lineno >= code.length) throw new Error(messages.block_unclosed); 
                         // End of EXEC found
                         if ((matches = match(CICS_EXIT_RE)) != null) {
-                            ++lineno;
                             break;
                         }
                         
@@ -209,13 +220,12 @@ function parseCallGraph(code, duplicate_calls=true, program_name=false, replace_
                             pushEdge(proc, pname, CallType.CICS_LINK);
                         } 
                         ++lineno;
-                    }
-                }
+                    } // while
+                } // else 
                 ++lineno;
-            }
+            } // while
             pushNode(proc, NodeType.PROCEDURE, {fields: fields});
         }
-        if (++lineno >= code.length) throw messages.syntax_error;
     }
     return graph;
 }
@@ -258,7 +268,7 @@ function generateDotFile(graph) {
             case CallType.PERFORM:   color = '0.650 0.700 0.700'; break;
             case CallType.CALL:      color = '0.348 0.839 0.839'; break;
             case CallType.CICS_LINK: color = '0.515 0.762 0.762'; break;
-            default:                 console.assert(false); 
+            default:                 throw new Error(messages.unknow_call_type + e.type); 
         }
         dot.push(`"${e.source}" -> "${e.target}" [color="${color}"];`);
     });
@@ -270,7 +280,7 @@ function generateDotFile(graph) {
             case NodeType.PROCEDURE:      color = '0.650 0.200 1.000'; break;
             case NodeType.BATCH_PROGRAM:  color = '0.201 0.753 1.000'; break;
             case NodeType.ONLINE_PROGRAM: color = '0.499 0.386 1.000'; break;
-            default:                      console.assert(false);
+            default:                      throw new Error(messages.unknow_node_type + n.type);
         }
         dot.push(`"${n.id}" [color="${color}"];`);
     });
