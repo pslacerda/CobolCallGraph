@@ -60,7 +60,7 @@ window.addEventListener('error', function(error) {
  * Regular expressions for parsing some Cobol constructs using some code conventions.
  * FIXME: The FIELD_RE support only fields with a VALUE clause added in the same line.
  */
-const PROCEDURE_DIVISION_BEGIN_RE = /^ {7}PROCEDURE +DIVISION *\. */;
+const PROCEDURE_DIVISION_BEGIN_RE = /^ {7}PROCEDURE +DIVISION.*\. */;
 const DEFAULT_SECTIONS  = /^.{0,6}[^\*](CONFIGURATION|INPUT-OUTPUT|FILE|WORKING-STORAGE|LOCAL-STORAGE|LINKAGE) +SECTION *\./;
 const DIVISION_BEGIN_RE = /^.{0,6}[^\*]([A-Z0-9-]+) +DIVISION *\. */;
 const SECTION_BEGIN_RE  = /^.{0,6}[^\*]([A-Z0-9-]+) +SECTION *\. */;
