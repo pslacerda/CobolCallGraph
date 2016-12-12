@@ -69,7 +69,7 @@ const PROGRAM_ID_RE     = /^.{0,6}[^\*]PROGRAM\-ID\. +([^ ]+)\. */;
 const FIELD_RE          = /^.{0,6}[^\*] +[0-9]+ +([A-Z0-9-]+) +PIC.* VALUE ["']([A-Z0-9-]+)["']\..*/;
 const PROC_BEGIN_RE     = /^.{0,6}[^\*]([^ ]+) +SECTION\. */;
 const PROC_EXIT_RE      = /^.{0,6}[^\*]([0-9]+)-99-FIM\. +EXIT\. */;
-const PERFORM_RE        = /^.{0,6}[^\*] +PERFORM +([^ ]+)/;
+const PERFORM_RE        = /^.{0,6}[^\*] +PERFORM +([^ \.]+)$/;
 const CALL_RE           = /^.{0,6}[^\*] +CALL ([A-Z0-9_-]+).*/;
 const CICS_BEGIN_RE     = /^.{0,6}[^\*] +EXEC +CICS +LINK */;
 const CICS_PROGRAM_RE   = /^.{0,6}[^\*] +PROGRAM +\(? *([A-Z0-9-]+) *\)? */;
@@ -112,7 +112,7 @@ function parseCallGraph(code, duplicate_calls=true, program_name=false, replace_
     function pushEdge(source, target, type) {
         let contains = false;
         graph.edges.forEach(e => {
-            if (e.source == source && e.target == target) {
+            if (e.source === source && e.target === target) {
                 contains = true;
             }
         });
