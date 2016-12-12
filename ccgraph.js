@@ -96,6 +96,7 @@ function parseCallGraph(code, duplicate_calls=true, program_name=false, replace_
     
     let registeredIds = {}; // improve performance for large source files
     function pushNode(id, type, data={}) {
+        debug("registering node", id);
         if (registeredIds[id] === true) {
             return;
         } else {
@@ -111,6 +112,7 @@ function parseCallGraph(code, duplicate_calls=true, program_name=false, replace_
     
     function pushEdge(source, target, type) {
         let contains = false;
+        debug(source, " -> ", target);
         graph.edges.forEach(e => {
             if (e.source === source && e.target === target) {
                 contains = true;
@@ -138,11 +140,9 @@ function parseCallGraph(code, duplicate_calls=true, program_name=false, replace_
         
         if ((matches = match(PROGRAM_ID_RE)) != null) {
             program = matches[1];
-            debug(messages.program_name_finded, lineno + 1, program);
         } 
 
         else if((matches = match(DEFAULT_SECTIONS)) != null) {
-          debug("Default section finded: ", matches[1]);
           continue;
         }
         
@@ -156,7 +156,6 @@ function parseCallGraph(code, duplicate_calls=true, program_name=false, replace_
             if (program_name) {
                 proc = `[${program}] ${proc}`;
             }
-            debug(messages.procedure_begin, proc);
             
             // Iter the procedure line by line
             while (true) {
@@ -164,7 +163,6 @@ function parseCallGraph(code, duplicate_calls=true, program_name=false, replace_
 
                 // End of procedure found
                 if ((matches = match(PROC_EXIT_RE)) != null) {
-                    debug(messages.procedure_exit, proc);
                     break;
                 }
                 
@@ -200,7 +198,6 @@ function parseCallGraph(code, duplicate_calls=true, program_name=false, replace_
                 
                 // Begining of an online call found(EXEC)
                 else if ((matches = match(CICS_BEGIN_RE)) != null) {
-                    debug(messages.stargin_cics);
                     
                     // Iter the EXEC block line by line
                     while (true) {
@@ -274,7 +271,6 @@ function generateDotFile(graph) {
     });
     
     graph.nodes.forEach(n => {
-        debug(n.id, n);
         let color;
         switch (n.type) {
             case NodeType.PROCEDURE:      color = '0.650 0.200 1.000'; break;

@@ -24,5 +24,5 @@ QUnit.test("Parse source", function( assert ) {
     assert.ok(graph.nodes, "Nodes is not null");
     assert.ok(graph.edges, "Edges is not null");
     assert.equal(graph.nodes.length, 7, "Finded 7 procedures");
-    assert.equal(graph.edges.length, 5, "Finded 7 links to procedures");
+    assert.equal(graph.edges.length, 6, "Finded 6 links to procedures");
 });
