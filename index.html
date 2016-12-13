@@ -52,7 +52,7 @@
                       link.target = nodes[link.target] || (nodes[link.target] = {name: link.target});
                   });
                   drawarea.innerHTML = "";
-                  d3generator.draw(tree.nodes, tree.edges);
+                  d3generator.draw(nodes, tree.edges);
                }
             }
             function generateDot() {

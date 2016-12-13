@@ -120,12 +120,12 @@ function parseCallGraph(code, duplicate_calls=true, program_name=false, replace_
     
     function pushNode(id, type, data={}) {
         id = id.trim();
-        graph.nodes[id]  = {
+        graph.nodes.push({
             id: id,
             name: id,
             type: type,
             data: data
-        };
+        });
     }
     
     function pushEdge(source, target, type) {
