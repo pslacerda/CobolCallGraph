@@ -118,14 +118,21 @@ function parseCallGraph(code, duplicate_calls=true, program_name=false, replace_
         return re.exec(line);
     }
     
+    let registedNodes = {};
     function pushNode(id, type, data={}) {
         id = id.trim();
+        if (registedNodes[id]) {
+            return false;
+        }
         graph.nodes.push({
             id: id,
             name: id,
             type: type,
             data: data
         });
+        registedNodes[id] = true;
+
+        return true;
     }
     
     function pushEdge(source, target, type) {
