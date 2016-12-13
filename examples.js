@@ -12,6 +12,7 @@ var program_1 =
     "       0000-PRINCIPAL                  SECTION.\n" +
     "           PERFORM 1000-START\n" +
     "           PERFORM 2000-PROCESS\n" +
+    "           PERFORM 2000-PROCESS\n" +
     "           PERFORM 4000-FINISH\n" +
     "       0000-99-FIM.                    EXIT.\n" +
     "\n" +

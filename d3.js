@@ -7,67 +7,63 @@
         path: {},
         text: {},
 
-    setSearchInput: function(selector) {
-        var that = this;
-        that.input = d3.select(selector)[0][0];
-        d3.select(selector).on('keypress', function() {
-            that.searchedText = that.input.value;
-            that.tick();
-        });
-    },
-    draw: function (nodes, links) {
-        
-        var force = d3.layout.force()
-            .nodes(d3.values(nodes))
-            .links(links)
-            .size([this.width, this.height])
-            .linkDistance(150)
-            .charge(-300)
-            .on("tick", this.tick)
-            .start();
-        
-        var svg = d3.select("#drawarea").append("svg")
-            .attr("width", this.width)
-            .attr("height", this.height);
-        
-        // Per-type markers, as they don't inherit styles.
-        svg.append("defs").selectAll("marker")
-            .data(['1', '2', "3"])
-            .enter().append("marker")
-            .attr("id", function(d) { return d; })
-            .attr("viewBox", "0 -5 10 10")
-            .attr("refX", 15)
-            .attr("refY", -1.5)
-            .attr("markerWidth", 6)
-            .attr("markerHeight", 6)
-            .attr("orient", "auto")
-            .append("path")
-            .attr("d", "M0,-5L10,0L0,5");
-        
-        this.path = svg.append("g").selectAll("path")
-            .data(force.links())
-            .enter().append("path")
-            .attr("class", function(d) { return "link " + d.type; })
-            .attr("marker-end", function(d) { return "url(#" + d.type + ")"; });
-        
-        this.circle = svg.append("g").selectAll("circle")
-            .data(force.nodes())
-            .enter().append("circle")
-            .attr("r", 6)
-            .attr("data", function(d) { return d.id;})
-            .call(force.drag);
-        
-        this.text = svg.append("g").selectAll("text")
-            .data(force.nodes())
-            .enter().append("text")
-            .attr("x", 8)
-            .attr("y", ".31em")
-            .text(function(d) { return d.name; });
-        
-        // Use elliptical arc path segments to doubly-encode directionality.
-        
-        
-    },
+        setSearchInput: function(selector) {
+            var that = this;
+            that.input = d3.select(selector)[0][0];
+            d3.select(selector).on('keypress', function() {
+                that.searchedText = that.input.value;
+                that.tick();
+            });
+        },
+        draw: function (nodes, links) {
+            this.force = d3.layout.force()
+                .nodes(d3.values(nodes))
+                .links(links)
+                .size([this.width, this.height])
+                .linkDistance(150)
+                .charge(-300)
+                .on("tick", this.tick)
+                .start();
+            
+            this.svg = d3.select("#drawarea").append("svg")
+                .attr("width", this.width)
+                .attr("height", this.height);
+            
+            // Per-type markers, as they don't inherit styles.
+            this.svg.append("defs").selectAll("marker")
+                .data(['1', '2', '3'])
+                .enter()
+                .append("marker")
+                .attr("id", function(d) { return d; })
+                .attr("viewBox", "0 -5 10 10")
+                .attr("refX", 15)
+                .attr("refY", -1.5)
+                .attr("markerWidth", 6)
+                .attr("markerHeight", 6)
+                .attr("orient", "auto")
+                .append("path")
+                .attr("d", "M0,-5L10,0L0,5");
+            
+            this.path = this.svg.append("g").selectAll("path")
+                .data(this.force.links())
+                .enter().append("path")
+                .attr("class", function(d) { return "link " + d.type; })
+                .attr("marker-end", function(d) { return "url(#" + d.type + ")"; });
+            
+            this.circle = this.svg.append("g").selectAll("circle")
+                .data(this.force.nodes())
+                .enter().append("circle")
+                .attr("r", 6)
+                .attr("data", function(d) { return d.id;})
+                .call(this.force.drag);
+            
+            this.text = this.svg.append("g").selectAll("text")
+                .data(this.force.nodes())
+                .enter().append("text")
+                .attr("x", 8)
+                .attr("y", ".31em")
+                .text(function(d) { return d.name; });
+        },
 
         transform: function (d) {
           return "translate(" + d.x + "," + d.y + ")";

@@ -51,8 +51,8 @@ function debug() {
 
 window.addEventListener('error', function(error) {  
     let message = messages[error.message] || error.message;
-    alert(message);
     debug(message, error);
+    // alert(message);
     return true;
 }); 
 
@@ -79,6 +79,30 @@ const CICS_EXIT_RE      = /^.{0,6}[^\*] +END-EXEC */;
 /**
  *  Parses Cobol source code and returns a perform call graph.
  */
+function CallGraph(code, duplicate_calls=true, program_name=false, replace_fields={}) { 
+    this.lineno = -1;
+    this.code = code.split('\n');
+    debug(code.length, messages.lines_of_code);
+    
+    this.duplicate_calls = duplicate_calls;
+    this.program_name = program_name;
+    this.replace_fields = replace_fields;
+    this.graph = {
+        nodes: [],
+        edges: []
+    };
+    
+    this.match = function(re) {
+        var line = code[lineno];
+        return re.exec(line);
+    }
+    
+    this.parse = function(code) {
+
+        return this.graph;
+    };
+};
+
 function parseCallGraph(code, duplicate_calls=true, program_name=false, replace_fields={}) {
     let graph = {
         nodes: [],
@@ -94,27 +118,22 @@ function parseCallGraph(code, duplicate_calls=true, program_name=false, replace_
         return re.exec(line);
     }
     
-    let registeredIds = {}; // improve performance for large source files
     function pushNode(id, type, data={}) {
-        debug("registering node", id);
-        if (registeredIds[id] === true) {
-            return;
-        } else {
-            registeredIds[id] = true;
-            graph.nodes.push({
-                id: id,
-                name: id,
-                type: type,
-                data: data
-            });
-        }
+        id = id.trim();
+        graph.nodes[id]  = {
+            id: id,
+            name: id,
+            type: type,
+            data: data
+        };
     }
     
     function pushEdge(source, target, type) {
+        source = source.trim();
+        target = target.trim();
         let contains = false;
-        debug(source, " -> ", target);
         graph.edges.forEach(e => {
-            if (e.source === source && e.target === target) {
+            if (e.source == source && e.target == target) {
                 contains = true;
             }
         });
@@ -250,11 +269,32 @@ function parseFields(code) {
 
 /**
  * Produces a .dot file from a graph
-**/
+ */
 function generateDotFile(graph) {
+    var SearchBox = function(inputSelector = 'input') {
+        this.input = document.querySelector(inputSelector);
+        this.searchedText = '';
+        this.input.onkeypress = function() {
+            let searchedText = this.value?this.value.toUpperCase():"";
+            let list = document.querySelectorAll("g.node text");
+            for (var i in list) {
+                let value = list[i].innerHTML || "";
+                if (value.toUpperCase().indexOf(searchedText) > -1 ) {
+                    list[i] && list[i].classList ? list[i].classList.add("selected"):"";
+                    console.log(value);
+                } else {
+                    list[i] && list[i].classList ? list[i].classList.remove("selected"):"";
+                }
+            }
+        } // on keypress
+    };
+
+    new SearchBox();
+    let width = 1.8 * graph.edges.length;
+    let height= 1.3 * graph.edges.length;
     let dot = [
         'digraph call {',
-        'size="14,10"; ratio = fill;',
+        'size="' + width + ',' + height + '"; ratio = fill;',
         'graph [ordering="out"];',
         'node [style=filled]'
     ];
@@ -267,7 +307,8 @@ function generateDotFile(graph) {
             case CallType.CICS_LINK: color = '0.515 0.762 0.762'; break;
             default:                 throw new Error(messages.unknow_call_type + e.type); 
         }
-        dot.push(`"${e.source}" -> "${e.target}" [color="${color}"];`);
+        let text = `"${e.source}" -> "${e.target}" [color="${color}"];`;
+        dot.push(text);
     });
     
     graph.nodes.forEach(n => {

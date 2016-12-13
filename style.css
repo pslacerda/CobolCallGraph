@@ -38,12 +38,12 @@ circle {
   stroke-width: 1.5px;
 }
 
-circle.unselected {
+.unselected {
   fill: #ccc;
 }
 
-circle.selected {
-  fill: #faa;
+.selected {
+  fill: #f00;
 }
 
 text {

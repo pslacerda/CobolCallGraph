@@ -29,29 +29,30 @@
     <script src=d3.js></script>
     <script src=file_read.js></script>
     <script>
+            const config = {
+              duplicated_call: false,
+              program_name: false,
+            };
             d3generator.setSearchInput('input');
             function generateExample(source, type = 1) {
                let drawarea = document.querySelector('#drawarea');
                drawarea.innerHTML = "<h3>Loading...</h3>";
-               try {
-                 let tree = parseCallGraph(source, false, true, {});
-                 if ( type === 1 ) {
-                    var dot = generateDotFile(tree);
-                    var result = Viz(dot, {format: 'svg'});
-                    drawarea.innerHTML = result;
-                 } else {
-                    let tree = parseCallGraph(source, false, true, {});
-                    var nodes = {};
-                    // Compute the distinct nodes from the links.
-                    tree.edges.forEach(function(link) {
-                        link.source = nodes[link.source] || (nodes[link.source] = {name: link.source});
-                        link.target = nodes[link.target] || (nodes[link.target] = {name: link.target});
-                    });
-                    drawarea.innerHTML = "";
-                    d3generator.draw(nodes, tree.edges);
-                 }
-               } catch(e) {
-                 alert(e.message);
+               let tree = parseCallGraph(source, config.duplicated_call, config.program_name, {});
+               if ( type === 1 ) {
+                  var dot = generateDotFile(tree);
+                  var result = Viz(dot, {format: 'svg'});
+                  drawarea.innerHTML = result;
+               } else {
+                  let tree = parseCallGraph(source, config.duplicated_call, config.program_name, {});
+                  var nodes = {};
+                  // Compute the distinct nodes from the links.
+                  tree.edges = tree.edges.sort();
+                  tree.edges.forEach(function(link) {
+                      link.source = nodes[link.source] || (nodes[link.source] = {name: link.source});
+                      link.target = nodes[link.target] || (nodes[link.target] = {name: link.target});
+                  });
+                  drawarea.innerHTML = "";
+                  d3generator.draw(tree.nodes, tree.edges);
                }
             }
             function generateDot() {
@@ -59,10 +60,11 @@
                drawarea.innerHTML = "<h3>Loading...</h3>";
                loadLocalFile(function(fullText) {
                     try {
-                      let tree = parseCallGraph(fullText, false, true, {});
+                      let tree = parseCallGraph(fullText, config.duplicated_call, config.program_name, {});
                       var dot = generateDotFile(tree);
                       var result = Viz(dot, {format: 'svg'});
                       drawarea.innerHTML = result;
+
                     } catch(e) {
                       alert(e.message);
                     }
@@ -72,7 +74,7 @@
                let drawarea = document.querySelector('#drawarea');
                drawarea.innerHTML = "<h3>Loading...</h3>";
                loadLocalFile(function(fullText) {
-                    let tree = parseCallGraph(fullText, false, true, {});
+                    let tree = parseCallGraph(fullText, config.duplicated_call, config.program_name, {});
                     var nodes = {};
                     // Compute the distinct nodes from the links.
                     tree.edges.forEach(function(link) {

@@ -16,7 +16,7 @@ QUnit.test("Default Sections", function( assert ) {
 QUnit.module("Parser");
 QUnit.test("Parse source", function( assert ) {
     var source = program_1; 
-    var graph = parseCallGraph(source, true, true, {});
+    var graph = parseCallGraph(source, false, true, {});
     for(var i in graph.nodes) {
         debug(graph.nodes[i]);
     }
