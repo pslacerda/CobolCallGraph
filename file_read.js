@@ -28,6 +28,7 @@
     click: function () {
       this.get().click();
     },
+    contentCache: {},
     loadText: function (callback) {
       var reader = new FileReader();
       var localReference = this;
@@ -36,19 +37,29 @@
       var callb = callback || this.callback;
       reader.onload = function () {
         text += reader.result;
-        if (++loadCount >= localReference.get().files.length)
+        if (++loadCount >= localReference.get().files.length) {
+          localReference.contentCache.text = text;
           callb.call(this, text);
-        else {
+        } else {
+          this.contentCache.fileName = localReference.get().files[loadCount].name;
           reader.readAsText(localReference.get().files[loadCount]);
         }
       };
+      if (localReference.get().files.length === 0) {
+        return;
+      }
       if (localReference.get().files[0].size) {
-        reader.readAsText(localReference.get().files[0]);
+        if (localReference.get().files[0].name === localReference.contentCache.fileName) {
+          callb.call(this, localReference.contentCache.text);
+        } else {
+          reader.readAsText(localReference.get().files[0]);
+        }
       }
     }
   };
   var loadText = function (callback) {
     $input.callback = callback;
+    $input.get().value = '';
     $input.click();
   }
 

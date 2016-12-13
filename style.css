@@ -38,6 +38,14 @@ circle {
   stroke-width: 1.5px;
 }
 
+.unselected {
+  fill: #ccc;
+}
+
+.selected {
+  fill: #f00;
+}
+
 text {
   font: 10px sans-serif;
   pointer-events: none;
