@@ -1,5 +1,5 @@
 "use strict"
-
+// ******************************************************************************** 
 var CallType = {
     PERFORM: 1,
     CALL: 2,
@@ -16,7 +16,21 @@ var NodeType = {
 /**
  * This constant when seted to true will alow to all debug messages be printed on webbrowser console.
  */
-const IS_DEBUG = false;
+const IS_DEBUG = true;
+
+const messages = {
+    max_line_per_procedure: "Syntax Exception - Max line number per procedure raised",
+    lines_of_code: "lines of code finded.",
+    program_name_finded: "Program name finded on line",
+    procedure_begin: "Starting procedure",
+    procedure_exit: "Exiting procedure",
+    stargin_cics: "Starting an cics call",
+    unknow_call_type: "This type of call is not registered: ",
+    unknow_node_type: "This type of node is not registered: ",
+    syntax_error: "You hava an Syntax error in your code, please fix this issue and try again.",
+    block_unclosed: "An block of code is not closed",
+    "Script error." : "Unexpected error"
+};
 
 /**
  * Use this function instead console.log to keep control on when debug messages should be printed on console.
@@ -25,64 +39,105 @@ function debug() {
    if(IS_DEBUG) {
      let text = '';
      for(let i in arguments) {
-        text += ' ' + arguments[i];
+       if(typeof arguments[i] === "object") {
+         text += ' ' + JSON.stringify(arguments[i]);
+       } else {
+         text += ' ' + arguments[i];
+       }
      }
      console.log(text);
    }
 }
 
+window.addEventListener('error', function(error) {  
+    let message = messages[error.message] || error.message;
+    debug(message, error);
+    // alert(message);
+    return true;
+}); 
+
 /**
- * Regular expressions for parsing some Cobol constructs using Bradesco code conventions.
+ * Regular expressions for parsing some Cobol constructs using some code conventions.
  * FIXME: The FIELD_RE support only fields with a VALUE clause added in the same line.
-**/
-// TODO  CALL WRK-PROGRAMA           USING WRK-AREA-CMCT6J59
-const DIVISION_BEGIN_RE = /^ {7}([A-Z0-9-]+) +DIVISION *\. */;
-const SECTION_BEGIN_RE  = /^ {7}([A-Z0-9-]+) +SECTION *\. */;
-const MOVE_RE           = /^ {7} +MOVE +['"]([A-Z0-9_-]+)['"] +TO ([A-Z0-9_-]+) */;
-const PROCEDURE_DIVISION_BEGIN_RE = /^ {7}PROCEDURE +DIVISION *\. */;
-const PROGRAM_ID_RE     = /^ {7}PROGRAM\-ID\. +([A-Z0-9]+)\. */;
-const FIELD_RE          = /^ {7} +[0-9]+ +([A-Z0-9-]+) +PIC.* VALUE ["']([A-Z0-9-]+)["']\..*/;
-const PROC_BEGIN_RE     = /^ {7}([0-9]+)-([A-Z0-9-]+) +SECTION\. */;
-const PROC_EXIT_RE      = /^ {7}([0-9]+)-99-FIM\. +EXIT\. */;                      
-const PERFORM_RE        = /^ {7} +PERFORM +([0-9]+)-([A-Z0-9-]+)/;
-const CALL_RE           = /^ {7} +CALL ([A-Z0-9_-]+).*/;
-const CICS_BEGIN_RE     = /^ {7} +EXEC +CICS +LINK */;
-const CICS_PROGRAM_RE   = /^ {7} +PROGRAM +\(? *([A-Z0-9-]+) *\)? */;
-const CICS_EXIT_RE      = /^ {7} +END-EXEC */;
+ */
+const PROCEDURE_DIVISION_BEGIN_RE = /^ {7}PROCEDURE +DIVISION.*\. */;
+const DEFAULT_SECTIONS  = /^.{0,6}[^\*](CONFIGURATION|INPUT-OUTPUT|FILE|WORKING-STORAGE|LOCAL-STORAGE|LINKAGE) +SECTION *\./;
+const DIVISION_BEGIN_RE = /^.{0,6}[^\*]([A-Z0-9-]+) +DIVISION *\. */;
+const SECTION_BEGIN_RE  = /^.{0,6}[^\*]([A-Z0-9-]+) +SECTION *\. */;
+const MOVE_RE           = /^.{0,6}[^\*] +MOVE +['"]([A-Z0-9_-]+)['"] +TO ([A-Z0-9_-]+) */;
+const PROGRAM_ID_RE     = /^.{0,6}[^\*]PROGRAM\-ID\. +([^ ]+)\. */;
+const FIELD_RE          = /^.{0,6}[^\*] +[0-9]+ +([A-Z0-9-]+) +PIC.* VALUE ["']([A-Z0-9-]+)["']\..*/;
+const PROC_BEGIN_RE     = /^.{0,6}[^\*]([^ ]+) +SECTION\. */;
+const PROC_EXIT_RE      = /^.{0,6}[^\*]([0-9]+)-99-FIM\. +EXIT\. */;
+const PERFORM_RE        = /^.{0,6}[^\*] +PERFORM +([^ \.]+)$/;
+const CALL_RE           = /^.{0,6}[^\*] +CALL ([A-Z0-9_-]+).*/;
+const CICS_BEGIN_RE     = /^.{0,6}[^\*] +EXEC +CICS +LINK */;
+const CICS_PROGRAM_RE   = /^.{0,6}[^\*] +PROGRAM +\(? *([A-Z0-9-]+) *\)? */;
+const CICS_EXIT_RE      = /^.{0,6}[^\*] +END-EXEC */;
 // ***************************************************************************************************
 
 /**
  *  Parses Cobol source code and returns a perform call graph.
-**/
+ */
+function CallGraph(code, duplicate_calls=true, program_name=false, replace_fields={}) { 
+    this.lineno = -1;
+    this.code = code.split('\n');
+    debug(code.length, messages.lines_of_code);
+    
+    this.duplicate_calls = duplicate_calls;
+    this.program_name = program_name;
+    this.replace_fields = replace_fields;
+    this.graph = {
+        nodes: [],
+        edges: []
+    };
+    
+    this.match = function(re) {
+        var line = code[lineno];
+        return re.exec(line);
+    }
+    
+    this.parse = function(code) {
+
+        return this.graph;
+    };
+};
+
 function parseCallGraph(code, duplicate_calls=true, program_name=false, replace_fields={}) {
     let graph = {
         nodes: [],
         edges: []
     };
     
-    let lineno = 0;
+    let lineno = -1;
     code = code.split('\n');
+    debug(code.length, messages.lines_of_code);
     
     function match(re) {
         var line = code[lineno];
         return re.exec(line);
     }
     
+    let registedNodes = {};
     function pushNode(id, type, data={}) {
-        let node_ids = graph.nodes.map(n => {
-            return n.id
-        });
-        if (node_ids.indexOf(id) == -1) {
-            graph.nodes.push({
-                id: id,
-                name: id,
-                type: type,
-                data: data
-            });
+        id = id.trim();
+        if (registedNodes[id]) {
+            return false;
         }
+        graph.nodes.push({
+            id: id,
+            name: id,
+            type: type,
+            data: data
+        });
+        registedNodes[id] = true;
+
+        return true;
     }
     
     function pushEdge(source, target, type) {
+        source = source.trim();
+        target = target.trim();
         let contains = false;
         graph.edges.forEach(e => {
             if (e.source == source && e.target == target) {
@@ -101,38 +156,39 @@ function parseCallGraph(code, duplicate_calls=true, program_name=false, replace_
     // Line by line
     let program;
     
-    while (lineno < code.length) {
+    while (++lineno < code.length) {
+        if (lineno >= code.length) throw new Error(messages.block_unclosed);
         let matches;
         let fields;
-        if(code[lineno].substring(6, 7) === "*") {
-           lineno++;
+        if(code[lineno].substring(6, 7) === "*") { // TODO: fix comment 
            continue;
         }
         
         if ((matches = match(PROGRAM_ID_RE)) != null) {
             program = matches[1];
         } 
+
+        else if((matches = match(DEFAULT_SECTIONS)) != null) {
+          continue;
+        }
         
         // Begining of a procedure
         else if ((matches = match(PROC_BEGIN_RE)) != null) {
             fields = {};
-            console.assert(program !== undefined);
+            if (program === undefined) throw new Error("Program not identified");
             
-            let pnum = matches[1];
-            let pname = matches[2];
-            let proc = `${pnum}-${pname}`;
+            let pname = matches[1];
+            let proc = pname;
             if (program_name) {
                 proc = `[${program}] ${proc}`;
             }
             
             // Iter the procedure line by line
             while (true) {
-                
+                if (lineno >= code.length) throw new Error(messages.block_unclosed);
+
                 // End of procedure found
                 if ((matches = match(PROC_EXIT_RE)) != null) {
-                    let epnum = matches[1];
-                    console.assert(pnum == epnum);
-                    ++lineno;
                     break;
                 }
                 
@@ -147,15 +203,13 @@ function parseCallGraph(code, duplicate_calls=true, program_name=false, replace_
                 }
                 
                 // Perform found
-                else if ((matches = match(PERFORM_RE)) != null) {
-                    let ppnum = matches[1];
-                    let ppname = matches[2];
-                    let pproc = `${ppnum}-${ppname}`;
+                else if ((matches = match(PERFORM_RE)) != null) {                    
+                    let ppname = matches[1];
                     if (program_name) {
-                        pproc = `[${program}] ${pproc}`;
+                        ppname = `[${program}] ${ppname}`;
                     }
-                    pushNode(pproc, NodeType.PROCEDURE);
-                    pushEdge(proc, pproc, CallType.PERFORM);
+                    pushNode(ppname, NodeType.PROCEDURE);
+                    pushEdge(proc, ppname, CallType.PERFORM);
                 }
                 
                 // Batch call found
@@ -173,9 +227,9 @@ function parseCallGraph(code, duplicate_calls=true, program_name=false, replace_
                     
                     // Iter the EXEC block line by line
                     while (true) {
+                        if (lineno >= code.length) throw new Error(messages.block_unclosed); 
                         // End of EXEC found
                         if ((matches = match(CICS_EXIT_RE)) != null) {
-                            ++lineno;
                             break;
                         }
                         
@@ -189,14 +243,12 @@ function parseCallGraph(code, duplicate_calls=true, program_name=false, replace_
                             pushEdge(proc, pname, CallType.CICS_LINK);
                         } 
                         ++lineno;
-                    }
-                }
+                    } // while
+                } // else 
                 ++lineno;
-            }
+            } // while
             pushNode(proc, NodeType.PROCEDURE, {fields: fields});
         }
-        debug(graph.nodes);
-        ++lineno;
     }
     return graph;
 }
@@ -224,11 +276,32 @@ function parseFields(code) {
 
 /**
  * Produces a .dot file from a graph
-**/
+ */
 function generateDotFile(graph) {
+    var SearchBox = function(inputSelector = 'input') {
+        this.input = document.querySelector(inputSelector);
+        this.searchedText = '';
+        this.input.onkeypress = function() {
+            let searchedText = this.value?this.value.toUpperCase():"";
+            let list = document.querySelectorAll("g.node text");
+            for (var i in list) {
+                let value = list[i].innerHTML || "";
+                if (value.toUpperCase().indexOf(searchedText) > -1 ) {
+                    list[i] && list[i].classList ? list[i].classList.add("selected"):"";
+                    console.log(value);
+                } else {
+                    list[i] && list[i].classList ? list[i].classList.remove("selected"):"";
+                }
+            }
+        } // on keypress
+    };
+
+    new SearchBox();
+    let width = 1.8 * graph.edges.length;
+    let height= 1.3 * graph.edges.length;
     let dot = [
         'digraph call {',
-        'size="14,10"; ratio = fill;',
+        'size="' + width + ',' + height + '"; ratio = fill;',
         'graph [ordering="out"];',
         'node [style=filled]'
     ];
@@ -239,19 +312,19 @@ function generateDotFile(graph) {
             case CallType.PERFORM:   color = '0.650 0.700 0.700'; break;
             case CallType.CALL:      color = '0.348 0.839 0.839'; break;
             case CallType.CICS_LINK: color = '0.515 0.762 0.762'; break;
-            default:                 console.assert(false); 
+            default:                 throw new Error(messages.unknow_call_type + e.type); 
         }
-        dot.push(`"${e.source}" -> "${e.target}" [color="${color}"];`);
+        let text = `"${e.source}" -> "${e.target}" [color="${color}"];`;
+        dot.push(text);
     });
     
     graph.nodes.forEach(n => {
-        debug(n.id, n);
         let color;
         switch (n.type) {
             case NodeType.PROCEDURE:      color = '0.650 0.200 1.000'; break;
             case NodeType.BATCH_PROGRAM:  color = '0.201 0.753 1.000'; break;
             case NodeType.ONLINE_PROGRAM: color = '0.499 0.386 1.000'; break;
-            default:                      console.assert(false);
+            default:                      throw new Error(messages.unknow_node_type + n.type);
         }
         dot.push(`"${n.id}" [color="${color}"];`);
     });
